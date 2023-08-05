@@ -1,5 +1,3 @@
-using Inventory.Enums;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -18,10 +16,8 @@ public class InventoryManager : MonoBehaviour
     [SerializeField] private SlotClass[] startingItems;
 
     private SlotClass[] items;
-    private SlotClass[] armourItems;
 
     private GameObject[] slots;
-    [SerializeField] private GameObject[] armourSlots;
     private GameObject[] hotbarSlots;
 
     private SlotClass movingSlot;
@@ -38,28 +34,19 @@ public class InventoryManager : MonoBehaviour
         slots = new GameObject[slotHolder.transform.childCount];
         items = new SlotClass[slots.Length];
         hotbarSlots = new GameObject[hotbarSlotHolder.transform.childCount];
-        armourItems = new SlotClass[armourSlots.Length];
-
-        //define slot type for armour slots
-        armourItems[0] = new SlotClass(SlotType.helmet);
-        armourItems[1] = new SlotClass(SlotType.chest);
-        armourItems[2] = new SlotClass(SlotType.legs);
-        armourItems[3] = new SlotClass(SlotType.foot);
 
         for (int i = 0; i < hotbarSlots.Length; i++)
             hotbarSlots[i] = hotbarSlotHolder.transform.GetChild(i).gameObject;
         for (int i = 0; i < items.Length; i++)
             items[i] = new SlotClass();
-        for (int i = 0; i < startingItems.Length; i++)
-            items[i] = startingItems[i];
         //set all the slots
         for (int i = 0; i < slotHolder.transform.childCount; i++)
             slots[i] = slotHolder.transform.GetChild(i).gameObject;
-
-
+        //init start items
+        for (int i = 0; i < startingItems.Length; i++)
+            Add(startingItems[i].item, startingItems[i].quantity);
+        
         RefreshUI();
-        Add(itemToAdd, 1);
-        Remove(itemToRemove);
     }
     private void Update()
     {
@@ -75,10 +62,8 @@ public class InventoryManager : MonoBehaviour
         {
             //find the closest slot (the slot we clicked on)
             if (isMovingItem)
-            {
                 //end item move
                 EndItemMove();
-            }
             else
                 BeginItemMove();
         }
@@ -120,8 +105,6 @@ public class InventoryManager : MonoBehaviour
     {
         for (int i = 0; i < slots.Length; i++)
             RefreshSlot(items[i], slots[i].transform);
-        for (int i = 0; i < armourItems.Length; i++)
-            RefreshSlot(armourItems[i], armourSlots[i].transform);
         RefreshHotbar();
     }
     private void RefreshSlot(SlotClass slot, Transform slotUI)
@@ -153,15 +136,32 @@ public class InventoryManager : MonoBehaviour
     {
         //check if inventory contains item
         SlotClass slot = Contains(item);
-        if (slot != null && slot.item.isStackable)
-            slot.AddQuantity(quantity);
+
+        if (slot != null && slot.item.isStackable && slot.quantity < item.stackSize)
+        {
+            // going to add 20 = quantity
+            // there is already 5 = slot.quantity;
+            var quantityCanAdd = slot.item.stackSize - slot.quantity; //16 - 5 = 11
+            var quantityToAdd = Mathf.Clamp(quantity, 0, quantityCanAdd);
+                
+            var remainder = quantity - quantityCanAdd; // = 9
+            
+            slot.AddQuantity(quantityToAdd);
+            if (remainder > 0) Add(item, remainder);
+        }
         else
         {
             for (int i = 0; i < items.Length; i++)
             {
                 if (items[i].item == null) //this is an empty slot
                 { 
-                    items[i].AddItem(item, quantity);
+                    var quantityCanAdd = item.stackSize - items[i].quantity; //16 - 5 = 11
+                    var quantityToAdd = Mathf.Clamp(quantity, 0, quantityCanAdd);
+                
+                    var remainder = quantity - quantityCanAdd; // = 9
+            
+                    items[i].AddItem(item, quantityToAdd);
+                    if (remainder > 0) Add(item, remainder);
                     break;
                 }
             }
@@ -209,18 +209,25 @@ public class InventoryManager : MonoBehaviour
     }
     public bool isFull()
     {
-        for (int i = 0; i < items.Length; i++)
+        foreach (var slot in items)
         {
-            if (items[i].item == null)
+            if (slot is null || slot.quantity < slot.item.stackSize || !slot.item.isStackable)
                 return false;
         }
+
         return true;
+        /*for (int i = 0; i < items.Length; i++)
+        {
+            if (items[i].item is null || items[i].quantity < items[i].item.stackSize)
+                return false;
+        }
+        return true;*/
     }
     public SlotClass Contains(ItemClass item)
     {
         for (int i = 0; i < items.Length; i++)
         {
-            if (items[i].item == item)
+            if (items[i].item == item /*&& items[i].item.isStackable && */)
                 return items[i];
         }
 
@@ -276,38 +283,38 @@ public class InventoryManager : MonoBehaviour
         }
         else //clicked on a slot
         {
-            if (originalSlot.CanAdd(movingSlot.item))
+            if (originalSlot.item != null)
             {
-                if (originalSlot.item != null)
+                if (originalSlot.item == movingSlot.item && originalSlot.item.isStackable &&
+                    originalSlot.quantity < originalSlot.item.stackSize) //they're the same item (they should stack)
                 {
-                    if (originalSlot.item == movingSlot.item) //they're the same item (they should stack)
-                    {
-                        if (originalSlot.item.isStackable)
-                        {
-                            originalSlot.AddQuantity(movingSlot.quantity);
-                            movingSlot.Clear();
-                        }
-                        else
-                            return false;
-                    }
+                    var quantityCanAdd = originalSlot.item.stackSize - originalSlot.quantity; // = 6
+                    var quantityToAdd = Mathf.Clamp(movingSlot.quantity, 0, quantityCanAdd);
+                    var remainder = movingSlot.quantity - quantityToAdd; // = 10
+
+                    originalSlot.AddQuantity(quantityToAdd);
+                    if (remainder == 0) movingSlot.Clear();
                     else
                     {
-                        tempSlot = new SlotClass(originalSlot); //a = b
-                        originalSlot.AddItem(movingSlot.item, movingSlot.quantity); //b = c
-                        movingSlot.AddItem(tempSlot.item, tempSlot.quantity); //a = c
+                        movingSlot.SubQuantity(quantityCanAdd);
                         RefreshUI();
-                        return true;
+                        return false;
                     }
                 }
-                else //place item as usual
+                else
                 {
-
-                    originalSlot.AddItem(movingSlot.item, movingSlot.quantity);
-                    movingSlot.Clear();
+                    tempSlot = new SlotClass(originalSlot); //a = b
+                    originalSlot.AddItem(movingSlot.item, movingSlot.quantity); //b = c
+                    movingSlot.AddItem(tempSlot.item, tempSlot.quantity); //a = c
+                    RefreshUI();
+                    return true;
                 }
             }
-            else
-                return false;
+            else //place item as usual
+            {
+                originalSlot.AddItem(movingSlot.item, movingSlot.quantity);
+                movingSlot.Clear();
+            }
         }
 
         isMovingItem = false;
@@ -317,11 +324,10 @@ public class InventoryManager : MonoBehaviour
     private bool EndItemMove_Single()
     {
         originalSlot = GetClosestSlot();
-        if (originalSlot == null)
+        if (originalSlot is null)
             return false;
-        if (originalSlot.item != null && 
-            originalSlot.item != movingSlot.item &&
-            originalSlot.CanAdd(movingSlot.item))
+        if (originalSlot.item is not null && 
+            (originalSlot.item != movingSlot.item || originalSlot.quantity >= originalSlot.item.stackSize))
             return false;
 
         movingSlot.SubQuantity(1);
@@ -347,11 +353,6 @@ public class InventoryManager : MonoBehaviour
         {
             if (Vector2.Distance(slots[i].transform.position, Input.mousePosition) <= 32)
                 return items[i];
-        }
-        for (int i = 0; i < armourSlots.Length; i++)
-        {
-            if (Vector2.Distance(armourSlots[i].transform.position, Input.mousePosition) <= 32)
-                return armourItems[i];
         }
         return null;
     }

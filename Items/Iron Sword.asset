@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Iron Sword
   m_EditorClassIdentifier: 
   inputItems:
-  - item: {fileID: 11400000, guid: e5b15c50cac07014a8d0f942798b8f4c, type: 2}
-    quantity: 1
-  - item: {fileID: 11400000, guid: ad13dd6f600566046a911717140355d1, type: 2}
-    quantity: 1
+  - <item>k__BackingField: {fileID: 11400000, guid: 0fafbef5d89244042a10847150e896ff, type: 2}
+    <quantity>k__BackingField: 25
+  - <item>k__BackingField: {fileID: 11400000, guid: 414b721f670f67e41ab1b0038d660129, type: 2}
+    <quantity>k__BackingField: 1
   outputItem:
-    item: {fileID: 11400000, guid: 25f9ee271e8f44a4a87594677713d140, type: 2}
-    quantity: 1
+    <item>k__BackingField: {fileID: 11400000, guid: e5b15c50cac07014a8d0f942798b8f4c, type: 2}
+    <quantity>k__BackingField: 1

@@ -15,4 +15,6 @@ MonoBehaviour:
   itemName: Apple
   itemIcon: {fileID: 21300000, guid: e3a98361098888f4cbefd38d9f839e68, type: 3}
   isStackable: 1
+  stackSize: 20
+  slotType: 0
   healthAdded: 5

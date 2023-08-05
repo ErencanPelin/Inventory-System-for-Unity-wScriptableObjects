@@ -15,9 +15,6 @@ MonoBehaviour:
   itemName: Sword
   itemIcon: {fileID: 21300000, guid: fd1cae7c2747cbc4fa3a5781dcaef66e, type: 3}
   isStackable: 0
+  stackSize: 2
   slotType: 0
   toolType: 0
-  weaponStats:
-    damage: 5
-    critStrike: 5
-  activeModifier: {fileID: 0}
